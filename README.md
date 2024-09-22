@@ -119,3 +119,27 @@ remote: Enumerating objects: 2, done.
 remote: Total 2 (delta 0), reused 0 (delta 0), pack-reused 2 (from 1)
 ...
 ```
+
+## Benchmarking extraction methods
+In the `extract_repo.py` script, I attempt to extract the commits and the file changes for rails between `2010-01-01` and `2020-01-01`, and store this information in a sqlite database.
+```
+(.venv) ➜  git-benchmark git:(zgv/pydriller-sqlite) ✗ python extract_repo.py
+[PyDriller] extracting ./repos/rails_full_clone between 2010-01-01 00:00:00 - 2020-01-01 00:00:00...
+[PyDriller] NOT INSERTING FILE CHANGES.
+Time:  5.706474013000843
+{'commit_count': 61416}
+
+[GitPython] extracting ./repos/rails_full_clone between 2010-01-01 00:00:00 - 2020-01-01 00:00:00...
+Time:  116.05524593999871
+{'commit_count': 61405}
+
+[Git raw] extracting ./repos/rails_full_clone between 2010-01-01 00:00:00 - 2020-01-01 00:00:00...
+[Git raw] generating commits file.
+[Git raw] analyzing commits.
+Time:  11.660085206000076
+{'commit_count': 61405}
+```
+
+The winner is the Git raw strategy.
+This calls the Git executable and executes the following command: `git log --since=2010-01-01 --before=2020-01-01 --summary --numstat`
+The result is stored in a temporary file, and then parsed line by line to finally be inserted in sqlite.
