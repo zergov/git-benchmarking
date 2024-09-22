@@ -24,6 +24,21 @@ Resolving deltas: 100% (661265/661265), done.
 git clone git@github.com:rails/rails.git rails_full_clone  16.48s user 8.12s system 279% cpu 8.812 total
 ```
 
+The `--single-branch` can be used to ask git to only clone the history leading to the tip of a single branch (primary branch of the remote's HEAD by default).
+This can speed up the clone. Using this flag for rails saved us almost 2 seconds~:
+```
+➜  repos git:(main) time git clone --single-branch git@github.com:rails/rails.git rails_full_clone_with_single_branch
+Cloning into 'rails_full_clone_with_single_branch'...
+remote: Enumerating objects: 737735, done.
+remote: Counting objects: 100% (47/47), done.
+remote: Compressing objects: 100% (47/47), done.
+remote: Total 737735 (delta 0), reused 42 (delta 0), pack-reused 737688 (from 1)
+Receiving objects: 100% (737735/737735), 203.37 MiB | 61.87 MiB/s, done.
+Resolving deltas: 100% (551243/551243), done.
+
+git clone --single-branch git@github.com:rails/rails.git   13.99s user 5.68s system 275% cpu 7.139 total
+```
+
 ### Partial clone
 This clones all commits and trees, but not the blobs that are not needed. Can reduce clone size by 10x on large repositories.
 Partially cloning rails takes 5.2 seconds.
@@ -83,7 +98,13 @@ The output looks like:
 26	26	guides/source/action_text_overview.md
 ```
 
-This performs **really badly** for repositories that were partially cloned because the blobs needs to be fetched in order to generate the stats.
+It doesn't look like we gain any performances on repositories cloned with the `--single-branch` flag:
+```
+➜  rails_full_clone_with_single_branch git:(main) ✗ time git log --since=2010-01-01 --before=2020-01-01 --summary --numstat --pretty=format:"|%h|%aN|%cs|" > logs_2010-01-01_2020-01-01
+git log --since=2010-01-01 --before=2020-01-01 --summary --numstat  >   9.06s user 0.25s system 99% cpu 9.329 total
+```
+
+This performs **really badly** for repositories that were partially cloned because the blobs needs to be fetched from the remote in order to generate the stats.
 ```
 ➜  rails_partial_clone git:(main) ✗ time git log --since=2010-01-01 --before=2020-01-01 --numstat --pretty=format:"|%h|%aN|%cs|" > logs_2010-01-01_2020-01-01                               remote: Enumerating objects: 2, done.
 remote: Total 2 (delta 0), reused 0 (delta 0), pack-reused 2 (from 1)
