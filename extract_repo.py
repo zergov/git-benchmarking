@@ -86,29 +86,29 @@ def extract_repo_with_git_python(path: str, since: datetime, to: datetime):
 
 def extract_repo_with_raw_git_logs(path: str, since: datetime, to: datetime):
     print(f"[Git raw] extracting {path} between {since} - {to}...")
-    start_t = timer()
-
     repository = Repo(path)
-    command = [
-        "git",
-        "log",
-        f"--since={since}",
-        f"--before={to}",
-        "--summary",
-        "--numstat",
-        "--pretty=format:|%H|%cs|%an",
-    ]
 
+    start_t = timer()
     with tempfile.NamedTemporaryFile() as fp:
         print(f"[Git raw] generating commits file.")
+
+        command = [
+            "git",
+            "log",
+            f"--since={since}",
+            f"--before={to}",
+            "--summary",
+            "--numstat",
+            "--pretty=format:|%H|%cs|%an",
+        ]
         repository.git.execute(command=command, output_stream=fp)
-        fp.seek(0)
 
         connection = sqlite3.connect(f"db/raw_git_extract.db")
         create_database(connection)
         cursor = connection.cursor()
 
         print(f"[Git raw] analyzing commits.")
+        fp.seek(0)
         current_commit = None
         for line in fp:
             line = str(line, encoding="utf-8").strip()
