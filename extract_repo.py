@@ -1,4 +1,5 @@
 import sqlite3
+import tempfile
 from timeit import default_timer as timer
 from datetime import datetime
 
@@ -83,7 +84,61 @@ def extract_repo_with_git_python(path: str, since: datetime, to: datetime):
     connection.close()
 
 
+def extract_repo_with_raw_git_logs(path: str, since: datetime, to: datetime):
+    print(f"[Git raw] extracting {path} between {since} - {to}...")
+    start_t = timer()
+
+    repository = Repo(path)
+    command = [
+        "git",
+        "log",
+        f"--since={since}",
+        f"--before={to}",
+        "--summary",
+        "--numstat",
+        "--pretty=format:|%H|%cs|%an",
+    ]
+
+    with tempfile.NamedTemporaryFile() as fp:
+        print(f"[Git raw] generating commits file.")
+        repository.git.execute(command=command, output_stream=fp)
+        fp.seek(0)
+
+        connection = sqlite3.connect(f"db/raw_git_extract.db")
+        create_database(connection)
+        cursor = connection.cursor()
+
+        print(f"[Git raw] analyzing commits.")
+        current_commit = None
+        for line in fp:
+            line = str(line, encoding="utf-8").strip()
+
+            if line == "":
+                continue
+            elif line[0] == "|":
+                current_commit, commit_date, name = line[1:].split("|", 2)
+                row = (current_commit, name, datetime.fromisoformat(commit_date))
+                cursor.execute("INSERT INTO commits VALUES (?, ?, ?)", row)
+
+            elif line[0].isdigit():
+                additions, deletions, filepath = line.split("\t", 2)
+                row = (current_commit, filepath, additions, deletions)
+                cursor.execute("INSERT INTO file_changes VALUES (?, ?, ?, ?)", row)
+
+            elif line.startswith(("create", "delete", "rename")):
+                change, _, _, filepath = line.split(" ", 3)
+                pass
+
+    end_t = timer()
+    print("Time: ", end_t - start_t)
+
+    connection.commit()
+    dump_database_stats(connection)
+    connection.close()
+
+
 t1 = datetime(2010, 1, 1)
 t2 = datetime(2020, 1, 1)
 extract_repo_with_pydriller("./repos/rails_full_clone", t1, t2)
 extract_repo_with_git_python("./repos/rails_full_clone", t1, t2)
+extract_repo_with_raw_git_logs("./repos/rails_full_clone", t1, t2)
