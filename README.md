@@ -141,5 +141,9 @@ Time:  11.660085206000076
 ```
 
 The winner is the Git raw strategy.
-This calls the Git executable and executes the following command: `git log --since=2010-01-01 --before=2020-01-01 --summary --numstat`
+This calls the Git executable and executes the following command:
+```
+git log --since=2010-01-01 --before=2020-01-01 --summary --numstat
+```
+
 The result is stored in a temporary file, and then parsed line by line to finally be inserted in sqlite.
